@@ -1,0 +1,15 @@
+### Intellij ###
+target/
+out/
+.idea
+.mvn
+*.iml
+*.log
+
+### Credentials ###
+.env
+
+
+### VS Code ###
+.vscode/
+
