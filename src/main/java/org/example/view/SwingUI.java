@@ -1,41 +1,45 @@
 package org.example.view;
 
+
+ 
 import org.example.logger.LogEintrag;
+import org.example.logger.LogExporter;
+import org.example.logger.LogFilter;
 import org.example.logger.LogParser;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
-//import java.awt.*;
 import java.awt.*;
 import java.io.*;
 import java.util.List;
-
+ 
 public class SwingUI extends JFrame {
-    private final String[] LEVELS = {"Alle","TRACE","DEBUG", "INFO", "WARN", "ERROR","FATAL"};
+    private final String[] LEVELS = {"Alle","TRACE","DEBUG","INFO","WARN","ERROR","FATAL"};
     private final String[] COLUMNS = {"Zeilennummer", "Level", "Nachricht"};
-    private final DefaultTableModel tblModel = new DefaultTableModel(COLUMNS, 0){
+    private final DefaultTableModel tblModel = new DefaultTableModel(COLUMNS, 0) {
         @Override
-        public boolean isCellEditable(int row, int column) {
+        public boolean isCellEditable(int row, int col) { //readonly für alle Zellen
             return false;
         }
+ 
         @Override
-        public Class<?> getColumnClass(int column) {
-            return column == 0 ? Integer.class : String.class;
-           // return getValueAt(0, column).getClass();
+        public Class<?> getColumnClass(int col) { //Je nach Spalte als int oder String interpretieren
+            return col == 0? Integer.class: String.class;
         }
     };
     private final JTable tblLogs = new JTable(tblModel);
-
     private final JComboBox<String> cbLevel = new JComboBox<>(LEVELS);
     private final JTextField txtKeyword = new JTextField(18);
-
     private final JLabel lblStatus = new JLabel(" ");
     private final LogParser parser = new LogParser();
     private List<LogEintrag> eintraege = List.of();
-
-
-
+    private List<LogEintrag> gefiltert = List.of();
+    private LogFilter filter = new LogFilter();
+    private LogExporter exporter = new LogExporter();
+ 
     public SwingUI() {
         super("Log Viewer");
         buildUI();
@@ -44,87 +48,134 @@ public class SwingUI extends JFrame {
         setLocationRelativeTo(null);
         setVisible(true);
     }
-
+ 
     private void buildUI() {
         JButton btnLoad   = new JButton("Laden");
-        btnLoad.addActionListener(e -> {
-            ladeLogDatei();
-        });
-
+        btnLoad.addActionListener(e -> ladeLogDatei());
         JButton btnExport = new JButton("Export");
-
+        btnExport.addActionListener(e -> logs_exportieren());
+ 
         JPanel toolbar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         toolbar.add(btnLoad);
-        toolbar.add(new JSeparator(SwingConstants.VERTICAL));
+        //toolbar.add(new JSeparator(SwingConstants.VERTICAL));
         toolbar.add(new JLabel("Level:"));
+        cbLevel.addActionListener(e -> filter_anwenden());
         toolbar.add(cbLevel);
         toolbar.add(new JLabel("Keyword:"));
+        txtKeyword.addActionListener(e -> filter_anwenden());
+        //JTextField speichert nicht String, sondern in Document-Objekt
+        txtKeyword.getDocument().addDocumentListener(new  DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                filter_anwenden();
+            }
+ 
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                filter_anwenden();
+            }
+ 
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                filter_anwenden();
+            }
+        });
         toolbar.add(txtKeyword);
         toolbar.add(btnExport);
-
+ 
         tblLogs.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
         tblLogs.setRowHeight(20);
         tblLogs.setAutoResizeMode(JTable.AUTO_RESIZE_LAST_COLUMN);
         tblLogs.getColumnModel().getColumn(1).setCellRenderer(new LevelRenderer());
-
+ 
         lblStatus.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, Color.LIGHT_GRAY));
-
+ 
         setLayout(new BorderLayout(0, 2));
         add(toolbar, BorderLayout.NORTH);
         add(new JScrollPane(tblLogs), BorderLayout.CENTER);
         add(lblStatus, BorderLayout.SOUTH);
     }
-    private static class LevelRenderer extends DefaultTableCellRenderer{
+ 
+    private void logs_exportieren() {
+        if(tblModel.getRowCount() == 0) {
+            lblStatus.setText("Keine Logs gefunden");
+            return;
+        }
+        JFileChooser fc = new JFileChooser();
+        fc.setCurrentDirectory(new File(System.getProperty("user.dir")));
+        fc.setSelectedFile(new File("export.log"));
+        if(fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        //Abstrakte Basisklasse Reader/Writer Klassen, damit ich das
+        //in Tests in Strings schreiben kann. Zudem Logik auslagern
+        try (Writer fw = new BufferedWriter(new FileWriter(fc.getSelectedFile()))){
+            exporter.exportieren(gefiltert, fw);
+
+
+            
+        } catch (Exception e) {
+            lblStatus.setText(e.getMessage());
+        }
+    }
+ 
+    private void filter_anwenden() {
+        String level = cbLevel.getSelectedIndex() == 0? "": cbLevel.getSelectedItem().toString();
+        String keyword = txtKeyword.getText();
+        gefiltert = filter.filtere(eintraege, level, keyword);
+        tblModel.setRowCount(0);
+        for (LogEintrag e : gefiltert) {
+            tblModel.addRow(new Object[]{e.zeilennummer(), e.level(), e.nachricht()});
+        }
+    }
+ 
+    private static class LevelRenderer extends DefaultTableCellRenderer {
         @Override
         public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-           super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
             setHorizontalAlignment(CENTER);
             String level = (String) value;
             Color bgFarbe = Color.WHITE;
-            switch (level){
+            setForeground(Color.BLACK);
+            switch (level) {
                 case "FATAL":
                     bgFarbe = new Color(205, 51, 51);
                     setForeground(Color.WHITE);
                     break;
                 case "ERROR":
                     bgFarbe = Color.red;
+                    setForeground(Color.WHITE);
                     break;
                 case "WARN":
                     bgFarbe = Color.orange;
                     break;
-                    case "INFO":
+                case "INFO":
                     bgFarbe = new Color(255, 165, 79);
                     break;
-                    case "DEBUG":
+                case "DEBUG":
                     bgFarbe = Color.yellow;
                     break;
-
             }
             setBackground(bgFarbe);
             return this;
         }
-
-
     }
-    private void ladeLogDatei()  {
+ 
+    private void ladeLogDatei() {
         JFileChooser opendlg = new JFileChooser();
         opendlg.setCurrentDirectory(new File(System.getProperty("user.dir")));
-        if(opendlg.showOpenDialog(this) != JFileChooser.APPROVE_OPTION){
+        if(opendlg.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
         File datei = opendlg.getSelectedFile();
         try (Reader reader = new BufferedReader(new FileReader(datei))) {
             eintraege = parser.erzeugeEintraege(reader);
-            for(LogEintrag le : eintraege){
+            for(LogEintrag le: eintraege) {
                 tblModel.addRow(new Object[]{le.zeilennummer(), le.level(), le.nachricht()});
-
             }
-
-
-
         } catch (IOException e) {
-           lblStatus.setText(e.getMessage());
+            lblStatus.setText(e.getMessage());
         }
-
     }
 }
+ 
