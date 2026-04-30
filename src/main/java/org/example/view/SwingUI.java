@@ -1,11 +1,9 @@
-package org.example.view;
+package org.example.view ;
 
-
- 
-import org.example.logger.LogEintrag;
-import org.example.logger.LogExporter;
-import org.example.logger.LogFilter;
-import org.example.logger.LogParser;
+import org.example.logger.LogEintrag ;
+import org.example.logger.LogExporter ;
+import org.example.logger.LogFilter ;
+import org.example.logger.LogParser ;
 
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
@@ -27,7 +25,7 @@ public class SwingUI extends JFrame {
  
         @Override
         public Class<?> getColumnClass(int col) { //Je nach Spalte als int oder String interpretieren
-            return col == 0? Integer.class: String.class;
+            return col == 0 ? Integer.class : String.class;
         }
     };
     private final JTable tblLogs = new JTable(tblModel);
@@ -97,19 +95,19 @@ public class SwingUI extends JFrame {
     }
  
     private void logs_exportieren() {
-        if(tblModel.getRowCount() == 0) {
+        if (tblModel.getRowCount() == 0 ) {
             lblStatus.setText("Keine Logs gefunden");
             return;
         }
         JFileChooser fc = new JFileChooser();
         fc.setCurrentDirectory(new File(System.getProperty("user.dir")));
         fc.setSelectedFile(new File("export.log"));
-        if(fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
+        if (fc.showSaveDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
         //Abstrakte Basisklasse Reader/Writer Klassen, damit ich das
         //in Tests in Strings schreiben kann. Zudem Logik auslagern
-        try (Writer fw = new BufferedWriter(new FileWriter(fc.getSelectedFile()))){
+        try (Writer fw = new BufferedWriter(new FileWriter(fc.getSelectedFile()))) {
             exporter.exportieren(gefiltert, fw);
 
 
@@ -120,7 +118,7 @@ public class SwingUI extends JFrame {
     }
  
     private void filter_anwenden() {
-        String level = cbLevel.getSelectedIndex() == 0? "": cbLevel.getSelectedItem().toString();
+        String level = cbLevel.getSelectedIndex() == 0 ? "" : cbLevel.getSelectedItem().toString();
         String keyword = txtKeyword.getText();
         gefiltert = filter.filtere(eintraege, level, keyword);
         tblModel.setRowCount(0);
@@ -164,13 +162,13 @@ public class SwingUI extends JFrame {
     private void ladeLogDatei() {
         JFileChooser opendlg = new JFileChooser();
         opendlg.setCurrentDirectory(new File(System.getProperty("user.dir")));
-        if(opendlg.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+        if (opendlg.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
             return;
         }
         File datei = opendlg.getSelectedFile();
         try (Reader reader = new BufferedReader(new FileReader(datei))) {
             eintraege = parser.erzeugeEintraege(reader);
-            for(LogEintrag le: eintraege) {
+            for (LogEintrag le: eintraege) {
                 tblModel.addRow(new Object[]{le.zeilennummer(), le.level(), le.nachricht()});
             }
         } catch (IOException e) {
@@ -178,4 +176,3 @@ public class SwingUI extends JFrame {
         }
     }
 }
- 

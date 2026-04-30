@@ -5,5 +5,4 @@ package org.example.logger;
 //Auch bestimmte Methoden sind überschrieben: toString, equals, hashcode
 //Aber alles ist final: Klasse, Eigenschaften
 
-public record LogEintrag(int zeilennummer, String level, String nachricht) {
-}
+public record LogEintrag(int zeilennummer, String level, String nachricht) { }

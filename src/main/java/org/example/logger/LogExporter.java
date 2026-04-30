@@ -3,7 +3,9 @@ package org.example.logger;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.Writer;
+
 import java.util.List;
+
 
 public class LogExporter {
     public void exportieren(List<LogEintrag> eintraege_gefiltert, Writer writer) throws IOException {
@@ -14,5 +16,6 @@ public class LogExporter {
 
         }
         bw.flush();
+
     }
 }
